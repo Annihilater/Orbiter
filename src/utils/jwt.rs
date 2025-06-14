@@ -10,6 +10,7 @@ pub struct Claims {
 }
 
 impl Claims {
+    #[allow(dead_code)]
     pub fn new(user_id: i32) -> Self {
         let expiration = Utc::now()
             .checked_add_signed(Duration::hours(24))
@@ -23,6 +24,7 @@ impl Claims {
     }
 }
 
+#[allow(dead_code)]
 pub fn create_token(user_id: i32, config: &Config) -> Result<String, Error> {
     let claims = Claims::new(user_id);
     encode(
