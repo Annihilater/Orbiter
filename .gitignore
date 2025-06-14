@@ -138,3 +138,4 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,windows,rust,rust-analyzer,vim,visualstudiocode
 
 .env
+.sqlx
