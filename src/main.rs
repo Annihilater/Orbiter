@@ -11,8 +11,10 @@ mod models;
 mod utils;
 
 use config::Config;
+use handlers::{ApiDoc, index, api_index, health_check};
+use handlers::auth::{register, login};
+use handlers::users::me;
 use middleware::Auth;
-use handlers::ApiDoc;
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
@@ -50,21 +52,24 @@ async fn main() -> io::Result<()> {
             ))
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(config.clone()))
+            .service(index)
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
             .service(
                 web::scope("/api")
+                    .service(api_index)
+                    .service(health_check)
                     .service(
                         web::scope("/auth")
-                            .route("/register", web::post().to(handlers::register))
-                            .route("/login", web::post().to(handlers::login))
+                            .route("/register", web::post().to(register))
+                            .route("/login", web::post().to(login))
                     )
                     .service(
                         web::scope("/users")
                             .wrap(Auth)
-                            .route("/me", web::get().to(handlers::me))
+                            .route("/me", web::get().to(me))
                     )
             )
     })
