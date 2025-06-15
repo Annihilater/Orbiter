@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: 代码检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust 缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 运行格式检查
+        run: cargo fmt --all -- --check
+
+      - name: 运行 Clippy
+        run: cargo clippy -- -D warnings
+
+  test:
+    name: 单元测试
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest]
+        arch: [x86_64, aarch64]
+        exclude:
+          - platform: ubuntu-latest
+            arch: aarch64
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.arch }}-unknown-linux-gnu, ${{ matrix.arch }}-apple-darwin
+
+      - name: Rust 缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 运行测试
+        run: |
+          if [ "${{ matrix.platform }}" = "ubuntu-latest" ]; then
+            cargo test --target ${{ matrix.arch }}-unknown-linux-gnu
+          else
+            cargo test --target ${{ matrix.arch }}-apple-darwin
+          fi
+
+  build:
+    name: 构建检查
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest]
+        arch: [x86_64, aarch64]
+        exclude:
+          - platform: ubuntu-latest
+            arch: aarch64
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.arch }}-unknown-linux-gnu, ${{ matrix.arch }}-apple-darwin
+
+      - name: Rust 缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 构建项目
+        run: |
+          if [ "${{ matrix.platform }}" = "ubuntu-latest" ]; then
+            cargo build --release --target ${{ matrix.arch }}-unknown-linux-gnu
+          else
+            cargo build --release --target ${{ matrix.arch }}-apple-darwin
+          fi
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: orbiter-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            target/${{ matrix.arch }}-*/release/orbiter
+            target/${{ matrix.arch }}-*/release/orbiter.exe
+          if-no-files-found: ignore
+
+  security:
+    name: 安全扫描
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 运行安全审计
+        run: cargo audit
+
+      - name: 依赖检查
+        uses: EmbarkStudios/cargo-deny-action@v1
